@@ -43,7 +43,7 @@ class OdooConnector:
                 db, uid, password,
                 "res.partner", "search_read",
                 [domain],
-                {"fields": ["id", "name"], "limit": 50, "order": "name asc"},
+                {"fields": ["id", "name", "street", "zip", "city"], "limit": 50, "order": "name asc"},
             )
         except Exception as e:
             logger.error("Odoo get_partners fout: %s", e)

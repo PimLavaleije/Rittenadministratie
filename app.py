@@ -213,6 +213,7 @@ def rit_formulier(rit_id=None):
     default_vehicle = Vehicle.query.filter_by(kenteken="S-581-TK").first()
     bestuurders = Driver.query.order_by(Driver.naam).all()
     voertuigen = Vehicle.query.filter_by(actief=True).order_by(Vehicle.kenteken).all()
+    home_address = os.getenv("HOME_ADDRESS", "Thuis")
     today = date.today().strftime("%Y-%m-%d")
 
     if request.method == "POST":
@@ -237,7 +238,8 @@ def rit_formulier(rit_id=None):
                 flash("Kies minimaal één datum.", "danger")
                 return render_template("rit_formulier.html", rit=rit,
                                        default_driver=default_driver, default_vehicle=default_vehicle,
-                                       bestuurders=bestuurders, voertuigen=voertuigen, today=today)
+                                       bestuurders=bestuurders, voertuigen=voertuigen,
+                                       home_address=home_address, today=today)
 
             max_eind = db.session.query(func.max(Trip.eindstand_km)).filter(
                 Trip.vehicle_id == rit.vehicle_id
@@ -268,7 +270,8 @@ def rit_formulier(rit_id=None):
                         flash(f, "danger")
                     return render_template("rit_formulier.html", rit=rit,
                                            default_driver=default_driver, default_vehicle=default_vehicle,
-                                           bestuurders=bestuurders, voertuigen=voertuigen, today=today)
+                                           bestuurders=bestuurders, voertuigen=voertuigen,
+                                       home_address=home_address, today=today)
                 db.session.add(rit_heen)
                 lopende_stand = rit_heen.eindstand_km
 
@@ -310,7 +313,8 @@ def rit_formulier(rit_id=None):
                     flash(f, "danger")
                 return render_template("rit_formulier.html", rit=rit,
                                        default_driver=default_driver, default_vehicle=default_vehicle,
-                                       bestuurders=bestuurders, voertuigen=voertuigen, today=today)
+                                       bestuurders=bestuurders, voertuigen=voertuigen,
+                                       home_address=home_address, today=today)
 
         db.session.commit()
         flash("Rit opgeslagen.", "success")
@@ -318,7 +322,8 @@ def rit_formulier(rit_id=None):
 
     return render_template("rit_formulier.html", rit=rit,
                            default_driver=default_driver, default_vehicle=default_vehicle,
-                           bestuurders=bestuurders, voertuigen=voertuigen, today=today)
+                           bestuurders=bestuurders, voertuigen=voertuigen,
+                           home_address=home_address, today=today)
 
 
 # ── Rit verwijderen ────────────────────────────────────────────────────────

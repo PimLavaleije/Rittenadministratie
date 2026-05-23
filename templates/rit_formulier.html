@@ -63,15 +63,15 @@
           <div class="mb-3">
             <label class="form-label fw-semibold">Startlocatie</label>
             <input type="text" name="startlocatie" class="form-control"
-                   value="{{ rit.startlocatie or 'Thuis' }}">
+                   value="{{ rit.startlocatie or home_address }}">
           </div>
 
           <!-- Klant / Eindlocatie (Odoo autocomplete) -->
           <div class="mb-3 position-relative">
             <label class="form-label fw-semibold">Klant / Eindlocatie <span class="text-danger">*</span></label>
             <input type="text" id="klant_zoek" name="eindlocatie" class="form-control"
-                   placeholder="Zoek klant uit Odoo of typ een locatie..."
-                   value="{{ rit.odoo_partner_naam or rit.eindlocatie or '' }}"
+                   placeholder="Zoek klant uit Odoo of typ een adres..."
+                   value="{{ rit.eindlocatie or '' }}"
                    autocomplete="off" required>
             <input type="hidden" name="odoo_partner_id" id="odoo_partner_id" value="{{ rit.odoo_partner_id or '' }}">
             <input type="hidden" name="odoo_partner_naam" id="odoo_partner_naam" value="{{ rit.odoo_partner_naam or '' }}">
@@ -149,7 +149,12 @@
             a.textContent = item.name;
             a.onclick = e => {
               e.preventDefault();
-              input.value = item.name;
+              const adresDelen = [
+                item.street || '',
+                [item.zip || '', item.city || ''].filter(Boolean).join(' ')
+              ].filter(Boolean);
+              const adres = adresDelen.join(', ') || item.name;
+              input.value = adres;
               document.getElementById('odoo_partner_id').value = item.id;
               document.getElementById('odoo_partner_naam').value = item.name;
               lijst.style.display = 'none';
