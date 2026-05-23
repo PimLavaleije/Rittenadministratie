@@ -19,9 +19,11 @@ load_dotenv()
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-change-this-in-production")
+import ssl as _ssl
 _db_url = os.getenv("DATABASE_URL", "sqlite:///ritten.db")
 if _db_url.startswith("postgresql://"):
-    _db_url = _db_url.replace("postgresql://", "postgresql+pg8000://", 1).replace("?sslmode=require", "?ssl=true")
+    _db_url = _db_url.replace("postgresql://", "postgresql+pg8000://", 1).replace("?sslmode=require", "")
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"connect_args": {"ssl_context": _ssl.create_default_context()}}
 app.config["SQLALCHEMY_DATABASE_URI"] = _db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["UPLOAD_FOLDER"] = "uploads"
