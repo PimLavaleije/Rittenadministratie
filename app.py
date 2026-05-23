@@ -338,6 +338,19 @@ def rit_verwijder(rit_id):
     return redirect(url_for("ritten_lijst"))
 
 
+@app.route("/ritten/verwijder-bulk", methods=["POST"])
+@login_required
+def ritten_verwijder_bulk():
+    ids = request.form.getlist("ids", type=int)
+    if not ids:
+        flash("Geen ritten geselecteerd.", "warning")
+        return redirect(url_for("ritten_lijst"))
+    Trip.query.filter(Trip.id.in_(ids)).delete(synchronize_session=False)
+    db.session.commit()
+    flash(f"{len(ids)} rit{'ten' if len(ids) > 1 else ''} verwijderd.", "info")
+    return redirect(url_for("ritten_lijst"))
+
+
 # ── Odoo autocomplete API ──────────────────────────────────────────────────
 
 @app.route("/api/odoo/partners")

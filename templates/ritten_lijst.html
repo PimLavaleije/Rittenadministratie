@@ -44,79 +44,134 @@
   </div>
 </form>
 
-<div class="card">
-  <div class="table-responsive">
-    <table class="table table-hover mb-0 small">
-      <thead class="table-light">
-        <tr>
-          <th>Datum</th>
-          <th>Van → Naar</th>
-          <th class="hide-mobile">Bestuurder</th>
-          <th class="hide-mobile">Voertuig</th>
-          <th class="text-end">km</th>
-          <th>Type</th>
-          <th class="hide-mobile">Klant</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for rit in ritten.items %}
-        <tr>
-          <td class="text-nowrap">{{ rit.datum.strftime('%d-%m-%Y') }}</td>
-          <td>
-            <div class="fw-semibold">{{ rit.startlocatie }} → {{ rit.eindlocatie }}</div>
-            <div class="text-muted">{{ rit.omschrijving[:60] }}{% if rit.omschrijving|length > 60 %}…{% endif %}</div>
-          </td>
-          <td class="hide-mobile">{{ rit.driver.naam }}</td>
-          <td class="hide-mobile">{{ rit.vehicle.kenteken }}</td>
-          <td class="text-end fw-semibold">{{ "%.1f"|format(rit.kilometers) }}</td>
-          <td>
-            <span class="badge {% if rit.type == 'zakelijk' %}bg-primary{% else %}bg-secondary{% endif %}">
-              {{ rit.type }}
-            </span>
-          </td>
-          <td class="hide-mobile text-muted">{{ rit.odoo_partner_naam or '' }}</td>
-          <td class="text-nowrap">
-            <a href="/rit/{{ rit.id }}/bewerk" class="btn btn-sm btn-outline-secondary py-0">
-              <i class="bi bi-pencil"></i>
-            </a>
-            <form method="post" action="/rit/{{ rit.id }}/verwijder" style="display:inline"
-                  onsubmit="return confirm('Rit verwijderen?')">
-              <button class="btn btn-sm btn-outline-danger py-0"><i class="bi bi-trash"></i></button>
-            </form>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="8" class="text-center text-muted py-5">
-            Geen ritten gevonden.
-            {% if not zoek and not type_filter %}
-              <a href="/rit/nieuw">Voeg je eerste rit toe.</a>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<!-- Bulk actie balk -->
+<form id="bulk-form" method="post" action="/ritten/verwijder-bulk">
+  <div id="bulk-balk" class="d-none mb-2 d-flex align-items-center gap-3 p-2 bg-light border rounded">
+    <span id="bulk-teller" class="fw-semibold text-danger small"></span>
+    <button type="submit" class="btn btn-sm btn-danger"
+            onclick="return confirm('Geselecteerde ritten definitief verwijderen?')">
+      <i class="bi bi-trash me-1"></i>Verwijder selectie
+    </button>
+    <button type="button" id="bulk-annuleer" class="btn btn-sm btn-outline-secondary">Annuleren</button>
   </div>
 
-  {% if ritten.pages > 1 %}
-  <div class="card-footer">
-    <nav>
-      <ul class="pagination pagination-sm justify-content-center mb-0">
-        {% set qs = "zoek=" ~ zoek ~ "&type=" ~ type_filter ~ "&voertuig=" ~ voertuig_filter ~ "&jaar=" ~ jaar_filter ~ "&maand=" ~ maand_filter %}
-        <li class="page-item {% if not ritten.has_prev %}disabled{% endif %}">
-          <a class="page-link" href="?pagina={{ ritten.prev_num }}&{{ qs }}">‹</a>
-        </li>
-        <li class="page-item disabled">
-          <span class="page-link">{{ ritten.page }} / {{ ritten.pages }}</span>
-        </li>
-        <li class="page-item {% if not ritten.has_next %}disabled{% endif %}">
-          <a class="page-link" href="?pagina={{ ritten.next_num }}&{{ qs }}">›</a>
-        </li>
-      </ul>
-    </nav>
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 small">
+        <thead class="table-light">
+          <tr>
+            <th style="width:2rem"><input type="checkbox" id="select-all" class="form-check-input"></th>
+            <th>Datum</th>
+            <th>Van → Naar</th>
+            <th class="hide-mobile">Bestuurder</th>
+            <th class="hide-mobile">Voertuig</th>
+            <th class="text-end">km</th>
+            <th>Type</th>
+            <th class="hide-mobile">Klant</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rit in ritten.items %}
+          <tr>
+            <td><input type="checkbox" name="ids" value="{{ rit.id }}" class="form-check-input rit-check"></td>
+            <td class="text-nowrap">{{ rit.datum.strftime('%d-%m-%Y') }}</td>
+            <td>
+              <div class="fw-semibold">{{ rit.startlocatie }} → {{ rit.eindlocatie }}</div>
+              <div class="text-muted">{{ rit.omschrijving[:60] }}{% if rit.omschrijving|length > 60 %}…{% endif %}</div>
+            </td>
+            <td class="hide-mobile">{{ rit.driver.naam }}</td>
+            <td class="hide-mobile">{{ rit.vehicle.kenteken }}</td>
+            <td class="text-end fw-semibold">{{ "%.1f"|format(rit.kilometers) }}</td>
+            <td>
+              <span class="badge {% if rit.type == 'zakelijk' %}bg-primary{% else %}bg-secondary{% endif %}">
+                {{ rit.type }}
+              </span>
+            </td>
+            <td class="hide-mobile text-muted">{{ rit.odoo_partner_naam or '' }}</td>
+            <td class="text-nowrap">
+              <a href="/rit/{{ rit.id }}/bewerk" class="btn btn-sm btn-outline-secondary py-0">
+                <i class="bi bi-pencil"></i>
+              </a>
+              <button type="button" class="btn btn-sm btn-outline-danger py-0"
+                      onclick="if(confirm('Rit verwijderen?')) { var f=document.createElement('form'); f.method='post'; f.action='/rit/{{ rit.id }}/verwijder'; document.body.appendChild(f); f.submit(); }">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-5">
+              Geen ritten gevonden.
+              {% if not zoek and not type_filter %}
+                <a href="/rit/nieuw">Voeg je eerste rit toe.</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if ritten.pages > 1 %}
+    <div class="card-footer">
+      <nav>
+        <ul class="pagination pagination-sm justify-content-center mb-0">
+          {% set qs = "zoek=" ~ zoek ~ "&type=" ~ type_filter ~ "&voertuig=" ~ voertuig_filter ~ "&jaar=" ~ jaar_filter ~ "&maand=" ~ maand_filter %}
+          <li class="page-item {% if not ritten.has_prev %}disabled{% endif %}">
+            <a class="page-link" href="?pagina={{ ritten.prev_num }}&{{ qs }}">‹</a>
+          </li>
+          <li class="page-item disabled">
+            <span class="page-link">{{ ritten.page }} / {{ ritten.pages }}</span>
+          </li>
+          <li class="page-item {% if not ritten.has_next %}disabled{% endif %}">
+            <a class="page-link" href="?pagina={{ ritten.next_num }}&{{ qs }}">›</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
   </div>
-  {% endif %}
-</div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const selectAll = document.getElementById('select-all');
+  const balk = document.getElementById('bulk-balk');
+  const teller = document.getElementById('bulk-teller');
+  const annuleer = document.getElementById('bulk-annuleer');
+
+  function updateBalk() {
+    const alle = document.querySelectorAll('.rit-check');
+    const gekozen = document.querySelectorAll('.rit-check:checked');
+    const n = gekozen.length;
+    if (n > 0) {
+      teller.textContent = n + ' rit' + (n > 1 ? 'ten' : '') + ' geselecteerd';
+      balk.classList.remove('d-none');
+    } else {
+      balk.classList.add('d-none');
+    }
+    selectAll.indeterminate = n > 0 && n < alle.length;
+    selectAll.checked = alle.length > 0 && n === alle.length;
+  }
+
+  selectAll.addEventListener('change', () => {
+    document.querySelectorAll('.rit-check').forEach(cb => { cb.checked = selectAll.checked; });
+    updateBalk();
+  });
+
+  document.addEventListener('change', e => {
+    if (e.target.classList.contains('rit-check')) updateBalk();
+  });
+
+  annuleer.addEventListener('click', () => {
+    document.querySelectorAll('.rit-check').forEach(cb => { cb.checked = false; });
+    selectAll.checked = false;
+    selectAll.indeterminate = false;
+    balk.classList.add('d-none');
+  });
+})();
+</script>
 {% endblock %}
