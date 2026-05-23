@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: rittenadministratie
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: ODOO_URL
+        value: https://lavaleije-it-solutions.odoo.com
+      - key: ODOO_DB
+        value: lavaleije-it-solutions
+      - key: ODOO_USERNAME
+        value: pim@lavaleije.nl
+      - key: ODOO_PASSWORD
+        sync: false

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Instellingen — Rittenadministratie{% endblock %}
+
+{% block content %}
+<h4 class="mb-4"><i class="bi bi-gear me-2"></i>Instellingen</h4>
+
+<div class="row g-4">
+  <!-- Voertuigen -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header fw-semibold"><i class="bi bi-car-front me-2"></i>Voertuigen</div>
+      <div class="card-body">
+        <form method="post" action="/voertuig/nieuw" class="row g-2 mb-3">
+          <div class="col-5"><input type="text" name="kenteken" class="form-control form-control-sm" placeholder="Kenteken *" required></div>
+          <div class="col-3"><input type="text" name="merk" class="form-control form-control-sm" placeholder="Merk"></div>
+          <div class="col-3"><input type="text" name="model" class="form-control form-control-sm" placeholder="Model"></div>
+          <div class="col-1"><button class="btn btn-sm btn-primary w-100"><i class="bi bi-plus"></i></button></div>
+        </form>
+        <ul class="list-group list-group-flush">
+          {% for v in voertuigen %}
+          <li class="list-group-item py-1 d-flex justify-content-between">
+            <span><strong>{{ v.kenteken }}</strong>{% if v.merk %} — {{ v.merk }} {{ v.model }}{% endif %}</span>
+          </li>
+          {% else %}
+          <li class="list-group-item text-muted">Nog geen voertuigen.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bestuurders -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header fw-semibold"><i class="bi bi-person me-2"></i>Bestuurders</div>
+      <div class="card-body">
+        <form method="post" action="/bestuurder/nieuw" class="row g-2 mb-3">
+          <div class="col-6"><input type="text" name="naam" class="form-control form-control-sm" placeholder="Naam *" required></div>
+          <div class="col-5"><input type="email" name="email" class="form-control form-control-sm" placeholder="E-mail"></div>
+          <div class="col-1"><button class="btn btn-sm btn-primary w-100"><i class="bi bi-plus"></i></button></div>
+        </form>
+        <ul class="list-group list-group-flush">
+          {% for b in bestuurders %}
+          <li class="list-group-item py-1 d-flex justify-content-between">
+            <span>{{ b.naam }}</span>
+            <span class="text-muted small">{{ b.email or '' }}</span>
+          </li>
+          {% else %}
+          <li class="list-group-item text-muted">Nog geen bestuurders.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Odoo koppeling -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header fw-semibold"><i class="bi bi-link-45deg me-2"></i>Odoo koppeling</div>
+      <div class="card-body">
+        <p class="text-muted small mb-2">Stel deze waarden in via het <code>.env</code> bestand in de projectmap:</p>
+        <pre class="bg-light p-3 rounded small"><code>ODOO_URL=https://jouw-bedrijf.odoo.com
+ODOO_DB=jouw-database-naam
+ODOO_USERNAME=jouw@email.com
+ODOO_PASSWORD=jouw-wachtwoord-of-api-sleutel</code></pre>
+        <div class="alert alert-info small mb-0">
+          <i class="bi bi-info-circle me-1"></i>
+          Na invullen kun je in het ritformulier klanten en projecten zoeken uit Odoo.
+          De API-sleutel vind je in Odoo via <strong>Instellingen → Gebruikers → Mijn profiel → API sleutels</strong>.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Import — Rittenadministratie{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header fw-semibold"><i class="bi bi-upload me-2"></i>Importeer ritten vanuit Excel</div>
+      <div class="card-body">
+
+        <div class="alert alert-info small">
+          <strong>Verwacht kolomformaat (rij 1 = koppen, rij 2+ = data):</strong><br>
+          A: Datum (JJJJ-MM-DD of Excel-datumformaat)<br>
+          B: Bestuurder naam<br>
+          C: Kenteken<br>
+          D: Startlocatie<br>
+          E: Eindlocatie<br>
+          F: Beginstand km<br>
+          G: Eindstand km<br>
+          H: <em>(gereserveerd — kilometers worden berekend)</em><br>
+          I: Type (zakelijk / prive / privé)<br>
+          J: Klant naam (optioneel)<br>
+          K: Project naam (optioneel)<br>
+          L: Omschrijving<br>
+          M: Notitie (optioneel)
+        </div>
+
+        <form method="post" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Excel-bestand (.xlsx)</label>
+            <input type="file" name="bestand" class="form-control" accept=".xlsx,.xls" required>
+          </div>
+          <div class="d-flex gap-2">
+            <a href="/" class="btn btn-outline-secondary">Annuleren</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-upload me-1"></i>Importeer
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="mt-3 text-center">
+      <a href="/export/excel" class="btn btn-sm btn-outline-success">
+        <i class="bi bi-download me-1"></i>Download exportsjabloon
+      </a>
+      <div class="text-muted small mt-1">Exporteer eerst alle ritten als sjabloon voor het juiste kolomformaat.</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

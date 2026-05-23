@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Ritten — Rittenadministratie{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h4 class="mb-0"><i class="bi bi-list-ul me-2"></i>Ritten</h4>
+  <a href="/rit/nieuw" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Nieuwe rit
+  </a>
+</div>
+
+<!-- Filters -->
+<form method="get" class="row g-2 mb-3">
+  <div class="col-12 col-md-5">
+    <input type="text" name="zoek" class="form-control form-control-sm"
+           placeholder="Zoek op locatie, omschrijving, klant..." value="{{ zoek }}">
+  </div>
+  <div class="col-6 col-md-2">
+    <select name="type" class="form-select form-select-sm">
+      <option value="">Alle types</option>
+      <option value="zakelijk" {% if type_filter == 'zakelijk' %}selected{% endif %}>Zakelijk</option>
+      <option value="prive" {% if type_filter == 'prive' %}selected{% endif %}>Privé</option>
+    </select>
+  </div>
+  <div class="col-6 col-md-3">
+    <select name="voertuig" class="form-select form-select-sm">
+      <option value="">Alle voertuigen</option>
+      {% for v in voertuigen %}
+      <option value="{{ v.id }}" {% if voertuig_filter == v.id %}selected{% endif %}>{{ v.kenteken }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-12 col-md-2 d-flex gap-1">
+    <button type="submit" class="btn btn-sm btn-outline-primary flex-fill">Zoek</button>
+    <a href="/ritten" class="btn btn-sm btn-outline-secondary">✕</a>
+  </div>
+</form>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 small">
+      <thead class="table-light">
+        <tr>
+          <th>Datum</th>
+          <th>Van → Naar</th>
+          <th class="hide-mobile">Bestuurder</th>
+          <th class="hide-mobile">Voertuig</th>
+          <th class="text-end">km</th>
+          <th>Type</th>
+          <th class="hide-mobile">Klant</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rit in ritten.items %}
+        <tr>
+          <td class="text-nowrap">{{ rit.datum.strftime('%d-%m-%Y') }}</td>
+          <td>
+            <div class="fw-semibold">{{ rit.startlocatie }} → {{ rit.eindlocatie }}</div>
+            <div class="text-muted">{{ rit.omschrijving[:60] }}{% if rit.omschrijving|length > 60 %}…{% endif %}</div>
+          </td>
+          <td class="hide-mobile">{{ rit.driver.naam }}</td>
+          <td class="hide-mobile">{{ rit.vehicle.kenteken }}</td>
+          <td class="text-end fw-semibold">{{ "%.1f"|format(rit.kilometers) }}</td>
+          <td>
+            <span class="badge {% if rit.type == 'zakelijk' %}bg-primary{% else %}bg-secondary{% endif %}">
+              {{ rit.type }}
+            </span>
+          </td>
+          <td class="hide-mobile text-muted">{{ rit.odoo_partner_naam or '' }}</td>
+          <td class="text-nowrap">
+            <a href="/rit/{{ rit.id }}/bewerk" class="btn btn-sm btn-outline-secondary py-0">
+              <i class="bi bi-pencil"></i>
+            </a>
+            <form method="post" action="/rit/{{ rit.id }}/verwijder" style="display:inline"
+                  onsubmit="return confirm('Rit verwijderen?')">
+              <button class="btn btn-sm btn-outline-danger py-0"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center text-muted py-5">
+            Geen ritten gevonden.
+            {% if not zoek and not type_filter %}
+              <a href="/rit/nieuw">Voeg je eerste rit toe.</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if ritten.pages > 1 %}
+  <div class="card-footer">
+    <nav>
+      <ul class="pagination pagination-sm justify-content-center mb-0">
+        <li class="page-item {% if not ritten.has_prev %}disabled{% endif %}">
+          <a class="page-link" href="?pagina={{ ritten.prev_num }}&zoek={{ zoek }}&type={{ type_filter }}&voertuig={{ voertuig_filter }}">‹</a>
+        </li>
+        <li class="page-item disabled">
+          <span class="page-link">{{ ritten.page }} / {{ ritten.pages }}</span>
+        </li>
+        <li class="page-item {% if not ritten.has_next %}disabled{% endif %}">
+          <a class="page-link" href="?pagina={{ ritten.next_num }}&zoek={{ zoek }}&type={{ type_filter }}&voertuig={{ voertuig_filter }}">›</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
