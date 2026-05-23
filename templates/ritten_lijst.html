@@ -11,9 +11,25 @@
 
 <!-- Filters -->
 <form method="get" class="row g-2 mb-3">
-  <div class="col-12 col-md-5">
+  <div class="col-12 col-md-4">
     <input type="text" name="zoek" class="form-control form-control-sm"
            placeholder="Zoek op locatie, omschrijving, klant..." value="{{ zoek }}">
+  </div>
+  <div class="col-6 col-md-2">
+    <select name="jaar" class="form-select form-select-sm">
+      <option value="0">Alle jaren</option>
+      {% for j in jaren %}
+      <option value="{{ j }}" {% if jaar_filter == j %}selected{% endif %}>{{ j }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-6 col-md-2">
+    <select name="maand" class="form-select form-select-sm">
+      <option value="0">Alle maanden</option>
+      {% for mn in maand_namen %}
+      <option value="{{ loop.index }}" {% if maand_filter == loop.index %}selected{% endif %}>{{ mn }}</option>
+      {% endfor %}
+    </select>
   </div>
   <div class="col-6 col-md-2">
     <select name="type" class="form-select form-select-sm">
@@ -22,15 +38,7 @@
       <option value="prive" {% if type_filter == 'prive' %}selected{% endif %}>Privé</option>
     </select>
   </div>
-  <div class="col-6 col-md-3">
-    <select name="voertuig" class="form-select form-select-sm">
-      <option value="">Alle voertuigen</option>
-      {% for v in voertuigen %}
-      <option value="{{ v.id }}" {% if voertuig_filter == v.id %}selected{% endif %}>{{ v.kenteken }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div class="col-12 col-md-2 d-flex gap-1">
+  <div class="col-6 col-md-2 d-flex gap-1">
     <button type="submit" class="btn btn-sm btn-outline-primary flex-fill">Zoek</button>
     <a href="/ritten" class="btn btn-sm btn-outline-secondary">✕</a>
   </div>
@@ -96,14 +104,15 @@
   <div class="card-footer">
     <nav>
       <ul class="pagination pagination-sm justify-content-center mb-0">
+        {% set qs = "zoek=" ~ zoek ~ "&type=" ~ type_filter ~ "&voertuig=" ~ voertuig_filter ~ "&jaar=" ~ jaar_filter ~ "&maand=" ~ maand_filter %}
         <li class="page-item {% if not ritten.has_prev %}disabled{% endif %}">
-          <a class="page-link" href="?pagina={{ ritten.prev_num }}&zoek={{ zoek }}&type={{ type_filter }}&voertuig={{ voertuig_filter }}">‹</a>
+          <a class="page-link" href="?pagina={{ ritten.prev_num }}&{{ qs }}">‹</a>
         </li>
         <li class="page-item disabled">
           <span class="page-link">{{ ritten.page }} / {{ ritten.pages }}</span>
         </li>
         <li class="page-item {% if not ritten.has_next %}disabled{% endif %}">
-          <a class="page-link" href="?pagina={{ ritten.next_num }}&zoek={{ zoek }}&type={{ type_filter }}&voertuig={{ voertuig_filter }}">›</a>
+          <a class="page-link" href="?pagina={{ ritten.next_num }}&{{ qs }}">›</a>
         </li>
       </ul>
     </nav>

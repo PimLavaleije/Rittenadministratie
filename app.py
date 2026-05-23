@@ -113,6 +113,8 @@ def ritten_lijst():
     zoek = request.args.get("zoek", "")
     type_filter = request.args.get("type", "")
     voertuig_filter = request.args.get("voertuig", "", type=int)
+    jaar_filter = request.args.get("jaar", 0, type=int)
+    maand_filter = request.args.get("maand", 0, type=int)
     pagina = request.args.get("pagina", 1, type=int)
 
     query = Trip.query.order_by(Trip.datum.desc(), Trip.aangemaakt_op.desc())
@@ -129,9 +131,15 @@ def ritten_lijst():
         query = query.filter_by(type=type_filter)
     if voertuig_filter:
         query = query.filter_by(vehicle_id=voertuig_filter)
+    if jaar_filter:
+        query = query.filter(extract("year", Trip.datum) == jaar_filter)
+    if maand_filter:
+        query = query.filter(extract("month", Trip.datum) == maand_filter)
 
     paginering = query.paginate(page=pagina, per_page=20, error_out=False)
     voertuigen = Vehicle.query.filter_by(actief=True).all()
+    jaren = [r[0] for r in db.session.query(extract("year", Trip.datum)).distinct().order_by(extract("year", Trip.datum).desc()).all()]
+    maand_namen = ["Jan", "Feb", "Mrt", "Apr", "Mei", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"]
 
     return render_template(
         "ritten_lijst.html",
@@ -139,7 +147,11 @@ def ritten_lijst():
         zoek=zoek,
         type_filter=type_filter,
         voertuig_filter=voertuig_filter,
+        jaar_filter=jaar_filter,
+        maand_filter=maand_filter,
         voertuigen=voertuigen,
+        jaren=jaren,
+        maand_namen=maand_namen,
     )
 
 
@@ -245,6 +257,18 @@ def api_partners():
 def api_projects():
     zoek = request.args.get("q", "")
     return jsonify(odoo.get_projects(zoek))
+
+
+@app.route("/api/odoo/status")
+def api_odoo_status():
+    import os
+    return jsonify({
+        "ODOO_URL": os.getenv("ODOO_URL", ""),
+        "ODOO_DB": os.getenv("ODOO_DB", ""),
+        "ODOO_USERNAME": os.getenv("ODOO_USERNAME", ""),
+        "ODOO_PASSWORD_set": bool(os.getenv("ODOO_PASSWORD", "")),
+        "configured": odoo.configured,
+    })
 
 
 # ── Export ─────────────────────────────────────────────────────────────────
