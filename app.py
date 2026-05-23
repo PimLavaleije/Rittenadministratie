@@ -45,10 +45,9 @@ def dashboard():
     jaar = request.args.get("jaar", date.today().year, type=int)
     maand = request.args.get("maand", date.today().month, type=int)
 
-    base = Trip.query.filter(
-        extract("year", Trip.datum) == jaar,
-        extract("month", Trip.datum) == maand,
-    )
+    base = Trip.query.filter(extract("year", Trip.datum) == jaar)
+    if maand:
+        base = base.filter(extract("month", Trip.datum) == maand)
 
     totaal_zakelijk = sum(
         t.kilometers for t in base.filter_by(type="zakelijk").all()
