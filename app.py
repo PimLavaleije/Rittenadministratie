@@ -338,6 +338,69 @@ def rit_verwijder(rit_id):
     return redirect(url_for("ritten_lijst"))
 
 
+@app.route("/kwartaal")
+@login_required
+def kwartaal_rapport():
+    jaar = request.args.get("jaar", date.today().year, type=int)
+    tarief_str = request.args.get("tarief", "0.23")
+    try:
+        tarief = Decimal(tarief_str)
+        if tarief <= 0:
+            tarief = Decimal("0.23")
+    except Exception:
+        tarief = Decimal("0.23")
+
+    kwartalen = []
+    maand_namen_kw = ["jan – mrt", "apr – jun", "jul – sep", "okt – dec"]
+
+    for kw in range(1, 5):
+        maand_start = (kw - 1) * 3 + 1
+        maand_eind = kw * 3
+
+        basis = Trip.query.filter(
+            extract("year", Trip.datum) == jaar,
+            extract("month", Trip.datum) >= maand_start,
+            extract("month", Trip.datum) <= maand_eind,
+        )
+        zakelijk_km = Decimal(str(sum(t.kilometers for t in basis.filter_by(type="zakelijk").all())))
+        prive_km = Decimal(str(sum(t.kilometers for t in basis.filter_by(type="prive").all())))
+        totaal_km = zakelijk_km + prive_km
+
+        if totaal_km == 0:
+            continue
+
+        pct_zakelijk = float(zakelijk_km / totaal_km * 100)
+        pct_prive = float(prive_km / totaal_km * 100)
+        vergoeding = zakelijk_km * tarief
+
+        kwartalen.append({
+            "nummer": kw,
+            "label": f"Q{kw} {jaar}",
+            "maanden": maand_namen_kw[kw - 1],
+            "zakelijk_km": float(zakelijk_km),
+            "prive_km": float(prive_km),
+            "totaal_km": float(totaal_km),
+            "pct_zakelijk": pct_zakelijk,
+            "pct_prive": pct_prive,
+            "vergoeding": float(vergoeding),
+        })
+
+    jaren = [
+        r[0] for r in db.session.query(extract("year", Trip.datum))
+        .distinct().order_by(extract("year", Trip.datum).desc()).all()
+    ]
+    if jaar not in jaren:
+        jaren.insert(0, jaar)
+
+    return render_template(
+        "kwartaal.html",
+        kwartalen=kwartalen,
+        jaar=jaar,
+        jaren=jaren,
+        tarief=tarief,
+    )
+
+
 @app.route("/ritten/verwijder-bulk", methods=["POST"])
 @login_required
 def ritten_verwijder_bulk():

@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Kwartaalrapport {{ jaar }} — Rittenadministratie{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h4 class="mb-0"><i class="bi bi-receipt me-2"></i>Kwartaalrapport</h4>
+  <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">
+    <i class="bi bi-printer me-1"></i>Afdrukken
+  </button>
+</div>
+
+<!-- Instellingen balk -->
+<form method="get" class="row g-2 mb-4 align-items-end">
+  <div class="col-auto">
+    <label class="form-label form-label-sm fw-semibold mb-1">Jaar</label>
+    <select name="jaar" class="form-select form-select-sm">
+      {% for j in jaren %}
+      <option value="{{ j }}" {% if jaar == j %}selected{% endif %}>{{ j }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <label class="form-label form-label-sm fw-semibold mb-1">Tarief per km</label>
+    <div class="input-group input-group-sm">
+      <span class="input-group-text">€</span>
+      <input type="number" name="tarief" class="form-control" style="width:6rem"
+             step="0.01" min="0.01" value="{{ tarief }}">
+    </div>
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-sm btn-primary">Tonen</button>
+  </div>
+</form>
+
+{% if not kwartalen %}
+<div class="alert alert-info">
+  Geen ritten gevonden voor {{ jaar }}.
+</div>
+{% endif %}
+
+{% for kw in kwartalen %}
+<div class="card shadow-sm mb-4 kwartaal-card" id="kw{{ kw.nummer }}">
+  <div class="card-header d-flex justify-content-between align-items-center fw-semibold">
+    <span><i class="bi bi-calendar3-week me-2"></i>{{ kw.label }} &nbsp;<span class="fw-normal text-muted small">({{ kw.maanden }})</span></span>
+    <button type="button" class="btn btn-sm btn-outline-secondary py-0 btn-kopieer"
+            data-kw="{{ kw.nummer }}" title="Kopieer boekingtekst">
+      <i class="bi bi-clipboard me-1"></i>Kopieer
+    </button>
+  </div>
+  <div class="card-body">
+
+    <!-- KM overzicht -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3">
+        <div class="border rounded p-2 text-center">
+          <div class="text-muted small">Zakelijk</div>
+          <div class="fw-bold fs-5 text-primary">{{ "%.1f"|format(kw.zakelijk_km)|replace(".", ",") }} km</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="border rounded p-2 text-center">
+          <div class="text-muted small">Privé</div>
+          <div class="fw-bold fs-5 text-secondary">{{ "%.1f"|format(kw.prive_km)|replace(".", ",") }} km</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="border rounded p-2 text-center">
+          <div class="text-muted small">Totaal</div>
+          <div class="fw-bold fs-5">{{ "%.1f"|format(kw.totaal_km)|replace(".", ",") }} km</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="border rounded p-2 text-center">
+          <div class="text-muted small">% Zakelijk</div>
+          <div class="fw-bold fs-5 text-success">{{ "%.1f"|format(kw.pct_zakelijk)|replace(".", ",") }}%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kilometervergoeding boeking -->
+    <h6 class="fw-semibold mb-2">
+      <i class="bi bi-journal-text me-1 text-primary"></i>
+      Voorbeeld boeking — Kilometervergoeding
+    </h6>
+    <p class="text-muted small mb-2">
+      {{ "%.1f"|format(kw.zakelijk_km)|replace(".", ",") }} km &times; &euro;{{ tarief }} =
+      <strong>&euro;{{ "%.2f"|format(kw.vergoeding)|replace(".", ",") }}</strong>
+    </p>
+    <div class="table-responsive mb-3">
+      <table class="table table-bordered table-sm small mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Omschrijving</th>
+            <th class="text-center" style="width:6rem">Debet</th>
+            <th class="text-center" style="width:6rem">Credit</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Reiskosten auto — zakelijke km {{ kw.label }}</td>
+            <td class="text-center fw-semibold">&euro;{{ "%.2f"|format(kw.vergoeding)|replace(".", ",") }}</td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>Privé / Rekening-courant eigenaar</td>
+            <td></td>
+            <td class="text-center fw-semibold">&euro;{{ "%.2f"|format(kw.vergoeding)|replace(".", ",") }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- BTW correctie -->
+    <h6 class="fw-semibold mb-2">
+      <i class="bi bi-percent me-1 text-warning"></i>
+      BTW-correctie privégebruik auto
+    </h6>
+    <div class="alert alert-warning py-2 mb-0 small">
+      <strong>{{ "%.1f"|format(kw.pct_prive)|replace(".", ",") }}% privégebruik</strong> in dit kwartaal.
+      Pas dit percentage toe op de BTW die je in dit kwartaal hebt betaald over autokosten
+      (brandstof, onderhoud, verzekering e.d.) om het niet-aftrekbare deel te berekenen.
+      <br>
+      <span class="text-muted">
+        Voorbeeld: &euro;500 autokosten incl. 21% BTW &rarr; BTW = &euro;86,78 &rarr;
+        privécorrectie = {{ "%.1f"|format(kw.pct_prive)|replace(".", ",") }}% &times; &euro;86,78 =
+        &euro;{{ "%.2f"|format(kw.pct_prive / 100 * 86.78)|replace(".", ",") }}
+        (dit bedrag <em>niet</em> aftrekken op de BTW-aangifte).
+      </span>
+    </div>
+
+    <!-- Verborgen kopieertekst -->
+    <textarea class="d-none kopieer-tekst" id="kopieer-{{ kw.nummer }}">Kwartaalrapport {{ kw.label }} ({{ kw.maanden }})
+======================================
+Zakelijk:  {{ "%.1f"|format(kw.zakelijk_km) }} km
+Privé:     {{ "%.1f"|format(kw.prive_km) }} km
+Totaal:    {{ "%.1f"|format(kw.totaal_km) }} km
+% Zakelijk: {{ "%.1f"|format(kw.pct_zakelijk) }}%
+
+BOEKING — Kilometervergoeding
+Omschrijving                              Debet      Credit
+Reiskosten auto (zakelijke km {{ kw.label }})   € {{ "%.2f"|format(kw.vergoeding) }}
+Privé / Rekening-courant eigenaar                      € {{ "%.2f"|format(kw.vergoeding) }}
+
+BTW-correctie: {{ "%.1f"|format(kw.pct_prive) }}% privégebruik — pas toe op BTW autokosten {{ kw.label }}</textarea>
+
+  </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.btn-kopieer').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const kw = btn.dataset.kw;
+    const tekst = document.getElementById('kopieer-' + kw).value;
+    navigator.clipboard.writeText(tekst).then(() => {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Gekopieerd!';
+      btn.classList.replace('btn-outline-secondary', 'btn-success');
+      setTimeout(() => {
+        btn.innerHTML = orig;
+        btn.classList.replace('btn-success', 'btn-outline-secondary');
+      }, 2000);
+    }).catch(() => {
+      alert('Kopiëren niet gelukt. Gebruik Ctrl+A / Ctrl+C op de tekst.');
+    });
+  });
+});
+</script>
+<style>
+@media print {
+  nav, form, .btn, .btn-kopieer { display: none !important; }
+  .kwartaal-card { break-inside: avoid; box-shadow: none !important; border: 1px solid #ccc !important; }
+}
+</style>
+{% endblock %}
