@@ -3,130 +3,90 @@
 
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-lg-8">
+  <div class="col-lg-7">
     <div class="card shadow-sm">
       <div class="card-header fw-semibold">
         <a href="/ritten" class="text-decoration-none me-2"><i class="bi bi-arrow-left"></i></a>
         {% if rit.id %}Rit #{{ rit.id }} bewerken{% else %}<i class="bi bi-plus-circle me-2"></i>Nieuwe rit{% endif %}
       </div>
       <div class="card-body">
-        <form method="post" enctype="multipart/form-data">
-          <div class="row g-3">
+        <form method="post">
 
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Datum <span class="text-danger">*</span></label>
-              <input type="date" name="datum" class="form-control"
-                     value="{{ rit.datum.strftime('%Y-%m-%d') if rit.datum else '' }}" required>
+          <!-- Datum -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Datum <span class="text-danger">*</span></label>
+            <input type="date" name="datum" class="form-control"
+                   value="{{ rit.datum.strftime('%Y-%m-%d') if rit.datum else today }}" required>
+          </div>
+
+          <!-- Bestuurder + Voertuig (readonly) -->
+          <div class="row g-3 mb-3">
+            <div class="col-6">
+              <label class="form-label fw-semibold text-muted small">Bestuurder</label>
+              <div class="form-control bg-light text-muted">{{ default_driver.naam if default_driver else '—' }}</div>
             </div>
-
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Bestuurder <span class="text-danger">*</span></label>
-              <select name="driver_id" class="form-select" required>
-                <option value="">Kies bestuurder...</option>
-                {% for b in bestuurders %}
-                <option value="{{ b.id }}" {% if rit.driver_id == b.id %}selected{% endif %}>{{ b.naam }}</option>
-                {% endfor %}
-              </select>
+            <div class="col-6">
+              <label class="form-label fw-semibold text-muted small">Voertuig</label>
+              <div class="form-control bg-light text-muted">{{ default_vehicle.kenteken if default_vehicle else '—' }}</div>
             </div>
+          </div>
 
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Voertuig <span class="text-danger">*</span></label>
-              <select name="vehicle_id" class="form-select" required>
-                <option value="">Kies voertuig...</option>
-                {% for v in voertuigen %}
-                <option value="{{ v.id }}" {% if rit.vehicle_id == v.id %}selected{% endif %}>{{ v.kenteken }}{% if v.merk %} — {{ v.merk }} {{ v.model }}{% endif %}</option>
-                {% endfor %}
-              </select>
-            </div>
+          <!-- Startlocatie -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Startlocatie</label>
+            <input type="text" name="startlocatie" class="form-control"
+                   value="{{ rit.startlocatie or 'Thuis' }}">
+          </div>
 
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Startlocatie <span class="text-danger">*</span></label>
-              <input type="text" name="startlocatie" class="form-control" placeholder="bijv. Thuis, Kantoor Utrecht"
-                     value="{{ rit.startlocatie or '' }}" required>
-            </div>
+          <!-- Klant / Eindlocatie (Odoo autocomplete) -->
+          <div class="mb-3 position-relative">
+            <label class="form-label fw-semibold">Klant / Eindlocatie <span class="text-danger">*</span></label>
+            <input type="text" id="klant_zoek" name="eindlocatie" class="form-control"
+                   placeholder="Zoek klant uit Odoo of typ een locatie..."
+                   value="{{ rit.odoo_partner_naam or rit.eindlocatie or '' }}"
+                   autocomplete="off" required>
+            <input type="hidden" name="odoo_partner_id" id="odoo_partner_id" value="{{ rit.odoo_partner_id or '' }}">
+            <input type="hidden" name="odoo_partner_naam" id="odoo_partner_naam" value="{{ rit.odoo_partner_naam or '' }}">
+            <div id="klant_lijst" class="list-group position-absolute z-3" style="min-width:100%;display:none"></div>
+          </div>
 
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Eindlocatie <span class="text-danger">*</span></label>
-              <input type="text" name="eindlocatie" class="form-control" placeholder="bijv. Klant Amsterdam"
-                     value="{{ rit.eindlocatie or '' }}" required>
-            </div>
-
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Beginstand km <span class="text-danger">*</span></label>
-              <input type="number" name="beginstand_km" id="beginstand_km" class="form-control"
-                     step="0.1" min="0" value="{{ rit.beginstand_km or '' }}" required oninput="berekenKm()">
-            </div>
-
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Eindstand km <span class="text-danger">*</span></label>
-              <input type="number" name="eindstand_km" id="eindstand_km" class="form-control"
-                     step="0.1" min="0" value="{{ rit.eindstand_km or '' }}" required oninput="berekenKm()">
-            </div>
-
-            <div class="col-md-4">
-              <label class="form-label fw-semibold">Kilometers</label>
+          <!-- Kilometers + Heen en terug -->
+          <div class="row g-3 mb-3 align-items-end">
+            <div class="col-sm-5">
+              <label class="form-label fw-semibold">Kilometers enkele reis <span class="text-danger">*</span></label>
               <div class="input-group">
-                <input type="text" id="km_resultaat" class="form-control bg-light fw-bold" readonly
-                       value="{% if rit.id %}{{ '%.1f'|format(rit.kilometers) }}{% endif %}">
+                <input type="number" name="kilometers" class="form-control fw-bold"
+                       step="0.1" min="0.1"
+                       value="{{ '%.1f'|format(rit.kilometers) if rit.id else '' }}"
+                       required>
                 <span class="input-group-text">km</span>
               </div>
             </div>
-
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Type rit <span class="text-danger">*</span></label>
-              <div class="d-flex gap-3 mt-1">
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="type" value="zakelijk" id="type_zakelijk"
-                         {% if not rit.type or rit.type == 'zakelijk' %}checked{% endif %} required>
-                  <label class="form-check-label" for="type_zakelijk">
-                    <span class="badge bg-primary">Zakelijk</span>
-                  </label>
-                </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="type" value="prive" id="type_prive"
-                         {% if rit.type == 'prive' %}checked{% endif %}>
-                  <label class="form-check-label" for="type_prive">
-                    <span class="badge bg-secondary">Privé</span>
-                  </label>
-                </div>
+            {% if not rit.id %}
+            <div class="col-sm-7 pb-1">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="heen_en_terug" id="heen_en_terug" checked>
+                <label class="form-check-label fw-semibold" for="heen_en_terug">
+                  Heen en terug
+                </label>
+                <div class="text-muted small">Maakt automatisch ook de retourrit aan</div>
               </div>
             </div>
-
-            <!-- Odoo klant koppeling -->
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Klant (Odoo)</label>
-              <input type="text" id="klant_zoek" class="form-control" placeholder="Zoek klant..."
-                     value="{{ rit.odoo_partner_naam or '' }}" autocomplete="off">
-              <input type="hidden" name="odoo_partner_id" id="odoo_partner_id" value="{{ rit.odoo_partner_id or '' }}">
-              <input type="hidden" name="odoo_partner_naam" id="odoo_partner_naam" value="{{ rit.odoo_partner_naam or '' }}">
-              <div id="klant_lijst" class="list-group position-absolute z-3" style="max-width:400px;display:none"></div>
-            </div>
-
-            <!-- Odoo project koppeling -->
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Project (Odoo)</label>
-              <input type="text" id="project_zoek" class="form-control" placeholder="Zoek project..."
-                     value="{{ rit.odoo_project_naam or '' }}" autocomplete="off">
-              <input type="hidden" name="odoo_project_id" id="odoo_project_id" value="{{ rit.odoo_project_id or '' }}">
-              <input type="hidden" name="odoo_project_naam" id="odoo_project_naam" value="{{ rit.odoo_project_naam or '' }}">
-              <div id="project_lijst" class="list-group position-absolute z-3" style="max-width:400px;display:none"></div>
-            </div>
-
-            <div class="col-12">
-              <label class="form-label fw-semibold">Omschrijving / doel <span class="text-danger">*</span></label>
-              <input type="text" name="omschrijving" class="form-control"
-                     placeholder="bijv. Bespreking Q2 planning" value="{{ rit.omschrijving or '' }}" required>
-            </div>
-
-            <div class="col-12">
-              <label class="form-label fw-semibold">Notitie</label>
-              <textarea name="notitie" class="form-control" rows="2"
-                        placeholder="Optionele toelichting...">{{ rit.notitie or '' }}</textarea>
-            </div>
-
+            {% endif %}
           </div>
 
-          <div class="d-flex justify-content-between mt-4">
+          <!-- Notitie -->
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Notitie <span class="text-muted small fw-normal">(optioneel)</span></label>
+            <textarea name="notitie" class="form-control" rows="2"
+                      placeholder="Optionele toelichting...">{{ rit.notitie or '' }}</textarea>
+          </div>
+
+          <!-- Hidden fields -->
+          <input type="hidden" name="driver_id" value="{{ default_driver.id if default_driver else '' }}">
+          <input type="hidden" name="vehicle_id" value="{{ default_vehicle.id if default_vehicle else '' }}">
+
+          <div class="d-flex justify-content-between">
             <a href="/ritten" class="btn btn-outline-secondary">Annuleren</a>
             <button type="submit" class="btn btn-primary px-4">
               <i class="bi bi-check-lg me-1"></i>Opslaan
@@ -141,28 +101,18 @@
 
 {% block scripts %}
 <script>
-function berekenKm() {
-  const begin = parseFloat(document.getElementById('beginstand_km').value) || 0;
-  const eind = parseFloat(document.getElementById('eindstand_km').value) || 0;
-  const km = eind - begin;
-  const el = document.getElementById('km_resultaat');
-  el.value = km > 0 ? km.toFixed(1) : '';
-  el.classList.toggle('text-danger', km <= 0 && eind > 0);
-  el.classList.toggle('fw-bold', km > 0);
-}
-
-function setupAutocomplete(zoekId, lijstId, hiddenIdId, hiddenNaamId, apiUrl) {
-  const zoek = document.getElementById(zoekId);
-  const lijst = document.getElementById(lijstId);
+(function () {
+  const input = document.getElementById('klant_zoek');
+  const lijst = document.getElementById('klant_lijst');
   let timer;
 
-  zoek.addEventListener('input', () => {
+  input.addEventListener('input', () => {
     clearTimeout(timer);
-    document.getElementById(hiddenIdId).value = '';
-    document.getElementById(hiddenNaamId).value = '';
-    if (zoek.value.length < 2) { lijst.style.display = 'none'; return; }
+    document.getElementById('odoo_partner_id').value = '';
+    document.getElementById('odoo_partner_naam').value = '';
+    if (input.value.length < 2) { lijst.style.display = 'none'; return; }
     timer = setTimeout(() => {
-      fetch(apiUrl + encodeURIComponent(zoek.value))
+      fetch('/api/odoo/partners?q=' + encodeURIComponent(input.value))
         .then(r => r.json())
         .then(data => {
           lijst.innerHTML = '';
@@ -174,24 +124,22 @@ function setupAutocomplete(zoekId, lijstId, hiddenIdId, hiddenNaamId, apiUrl) {
             a.textContent = item.name;
             a.onclick = e => {
               e.preventDefault();
-              zoek.value = item.name;
-              document.getElementById(hiddenIdId).value = item.id;
-              document.getElementById(hiddenNaamId).value = item.name;
+              input.value = item.name;
+              document.getElementById('odoo_partner_id').value = item.id;
+              document.getElementById('odoo_partner_naam').value = item.name;
               lijst.style.display = 'none';
             };
             lijst.appendChild(a);
           });
           lijst.style.display = 'block';
-        });
+        })
+        .catch(() => { lijst.style.display = 'none'; });
     }, 300);
   });
 
   document.addEventListener('click', e => {
-    if (!zoek.contains(e.target)) lijst.style.display = 'none';
+    if (!input.contains(e.target) && !lijst.contains(e.target)) lijst.style.display = 'none';
   });
-}
-
-setupAutocomplete('klant_zoek', 'klant_lijst', 'odoo_partner_id', 'odoo_partner_naam', '/api/odoo/partners?q=');
-setupAutocomplete('project_zoek', 'project_lijst', 'odoo_project_id', 'odoo_project_naam', '/api/odoo/projects?q=');
+})();
 </script>
 {% endblock %}
