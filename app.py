@@ -292,7 +292,7 @@ def import_excel():
             return redirect(request.url)
 
         try:
-            wb = load_workbook(bestand, data_only=True)
+            wb = load_workbook(bestand, data_only=True, read_only=True)
             ws = wb.active
             geimporteerd = 0
             fouten = []
