@@ -153,6 +153,16 @@
               document.getElementById('odoo_partner_id').value = item.id;
               document.getElementById('odoo_partner_naam').value = item.name;
               lijst.style.display = 'none';
+              fetch('/api/laatste-km?partner_id=' + item.id)
+                .then(r => r.json())
+                .then(data => {
+                  if (data.km !== null) {
+                    const kmVeld = document.querySelector('input[name="kilometers"]');
+                    kmVeld.value = data.km.toFixed(1);
+                    kmVeld.focus();
+                  }
+                })
+                .catch(() => {});
             };
             lijst.appendChild(a);
           });

@@ -349,6 +349,22 @@ def api_projects():
     return jsonify(odoo.get_projects(zoek))
 
 
+@app.route("/api/laatste-km")
+@login_required
+def api_laatste_km():
+    partner_id = request.args.get("partner_id", type=int)
+    partner_naam = request.args.get("partner_naam", "")
+    query = Trip.query
+    if partner_id:
+        query = query.filter_by(odoo_partner_id=partner_id)
+    elif partner_naam:
+        query = query.filter_by(odoo_partner_naam=partner_naam)
+    else:
+        return jsonify({"km": None})
+    laatste = query.order_by(Trip.datum.desc(), Trip.aangemaakt_op.desc()).first()
+    return jsonify({"km": float(laatste.kilometers) if laatste else None})
+
+
 @app.route("/api/odoo/status")
 @login_required
 def api_odoo_status():
