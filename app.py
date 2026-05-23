@@ -7,6 +7,10 @@ from flask import (
     Flask, render_template, request, redirect, url_for,
     flash, jsonify, send_file, abort,
 )
+from flask_login import (
+    LoginManager, UserMixin, login_user, logout_user,
+    login_required, current_user,
+)
 from dotenv import load_dotenv
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -32,6 +36,47 @@ app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB max upload
 db.init_app(app)
 odoo = OdooConnector()
 
+login_manager = LoginManager(app)
+login_manager.login_view = "login"
+login_manager.login_message = "Log in om verder te gaan."
+login_manager.login_message_category = "warning"
+
+
+class User(UserMixin):
+    id = "1"
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User() if user_id == "1" else None
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for("dashboard"))
+    if request.method == "POST":
+        username = request.form.get("gebruikersnaam", "").strip()
+        password = request.form.get("wachtwoord", "")
+        valid_user = os.getenv("LOGIN_USERNAME", "admin")
+        valid_pass = os.getenv("LOGIN_PASSWORD", "")
+        if valid_pass and username == valid_user and password == valid_pass:
+            login_user(User(), remember=True)
+            next_page = request.args.get("next")
+            if next_page and next_page.startswith("/") and not next_page.startswith("//"):
+                return redirect(next_page)
+            return redirect(url_for("dashboard"))
+        flash("Onjuiste gebruikersnaam of wachtwoord.", "danger")
+    return render_template("login.html")
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    flash("Je bent uitgelogd.", "info")
+    return redirect(url_for("login"))
+
 
 @app.before_request
 def create_tables():
@@ -41,6 +86,7 @@ def create_tables():
 # ── Dashboard ──────────────────────────────────────────────────────────────
 
 @app.route("/")
+@login_required
 def dashboard():
     jaar = request.args.get("jaar", date.today().year, type=int)
     maand = request.args.get("maand", date.today().month, type=int)
@@ -109,6 +155,7 @@ def dashboard():
 # ── Rittenlijst ────────────────────────────────────────────────────────────
 
 @app.route("/ritten")
+@login_required
 def ritten_lijst():
     zoek = request.args.get("zoek", "")
     type_filter = request.args.get("type", "")
@@ -159,6 +206,7 @@ def ritten_lijst():
 
 @app.route("/rit/nieuw", methods=["GET", "POST"])
 @app.route("/rit/<int:rit_id>/bewerk", methods=["GET", "POST"])
+@login_required
 def rit_formulier(rit_id=None):
     rit = Trip.query.get_or_404(rit_id) if rit_id else Trip()
     default_driver = Driver.query.filter_by(naam="Pim Lavaleije").first()
@@ -276,6 +324,7 @@ def rit_formulier(rit_id=None):
 # ── Rit verwijderen ────────────────────────────────────────────────────────
 
 @app.route("/rit/<int:rit_id>/verwijder", methods=["POST"])
+@login_required
 def rit_verwijder(rit_id):
     rit = Trip.query.get_or_404(rit_id)
     db.session.delete(rit)
@@ -287,18 +336,21 @@ def rit_verwijder(rit_id):
 # ── Odoo autocomplete API ──────────────────────────────────────────────────
 
 @app.route("/api/odoo/partners")
+@login_required
 def api_partners():
     zoek = request.args.get("q", "")
     return jsonify(odoo.get_partners(zoek))
 
 
 @app.route("/api/odoo/projects")
+@login_required
 def api_projects():
     zoek = request.args.get("q", "")
     return jsonify(odoo.get_projects(zoek))
 
 
 @app.route("/api/odoo/status")
+@login_required
 def api_odoo_status():
     import os
     return jsonify({
@@ -313,6 +365,7 @@ def api_odoo_status():
 # ── Export ─────────────────────────────────────────────────────────────────
 
 @app.route("/export/excel")
+@login_required
 def export_excel():
     jaar = request.args.get("jaar", date.today().year, type=int)
     maand = request.args.get("maand", 0, type=int)
@@ -373,6 +426,7 @@ def export_excel():
 # ── Import vanuit Excel ────────────────────────────────────────────────────
 
 @app.route("/import", methods=["GET", "POST"])
+@login_required
 def import_excel():
     if request.method == "POST":
         bestand = request.files.get("bestand")
@@ -450,6 +504,7 @@ def import_excel():
 # ── Instellingen: voertuigen & bestuurders ─────────────────────────────────
 
 @app.route("/instellingen")
+@login_required
 def instellingen():
     voertuigen = Vehicle.query.order_by(Vehicle.kenteken).all()
     bestuurders = Driver.query.order_by(Driver.naam).all()
@@ -457,6 +512,7 @@ def instellingen():
 
 
 @app.route("/voertuig/nieuw", methods=["POST"])
+@login_required
 def voertuig_nieuw():
     v = Vehicle(
         kenteken=request.form["kenteken"].upper().strip(),
@@ -470,6 +526,7 @@ def voertuig_nieuw():
 
 
 @app.route("/bestuurder/nieuw", methods=["POST"])
+@login_required
 def bestuurder_nieuw():
     b = Driver(
         naam=request.form["naam"].strip(),
