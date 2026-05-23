@@ -163,12 +163,14 @@ def rit_formulier(rit_id=None):
     rit = Trip.query.get_or_404(rit_id) if rit_id else Trip()
     default_driver = Driver.query.filter_by(naam="Pim Lavaleije").first()
     default_vehicle = Vehicle.query.filter_by(kenteken="S-581-TK").first()
+    bestuurders = Driver.query.order_by(Driver.naam).all()
+    voertuigen = Vehicle.query.filter_by(actief=True).order_by(Vehicle.kenteken).all()
     today = date.today().strftime("%Y-%m-%d")
 
     if request.method == "POST":
         rit.datum = datetime.strptime(request.form["datum"], "%Y-%m-%d").date()
-        rit.driver_id = default_driver.id if default_driver else request.form.get("driver_id", type=int)
-        rit.vehicle_id = default_vehicle.id if default_vehicle else request.form.get("vehicle_id", type=int)
+        rit.driver_id = request.form.get("driver_id", type=int)
+        rit.vehicle_id = request.form.get("vehicle_id", type=int)
         rit.startlocatie = request.form.get("startlocatie", "Thuis").strip() or "Thuis"
         rit.eindlocatie = request.form.get("eindlocatie", "").strip() or "Onbekend"
         rit.type = "zakelijk"
@@ -182,32 +184,28 @@ def rit_formulier(rit_id=None):
         km = Decimal(request.form["kilometers"])
 
         if not rit_id:
+            datums = sorted(set(d for d in request.form.getlist("datum") if d))
+            if not datums:
+                flash("Kies minimaal één datum.", "danger")
+                return render_template("rit_formulier.html", rit=rit,
+                                       default_driver=default_driver, default_vehicle=default_vehicle,
+                                       bestuurders=bestuurders, voertuigen=voertuigen, today=today)
+
             max_eind = db.session.query(func.max(Trip.eindstand_km)).filter(
                 Trip.vehicle_id == rit.vehicle_id
             ).scalar()
-            begin = Decimal(str(max_eind)) if max_eind is not None else Decimal("0")
-            rit.beginstand_km = begin
-            rit.eindstand_km = begin + km
+            lopende_stand = Decimal(str(max_eind)) if max_eind is not None else Decimal("0")
+            heen_en_terug = bool(request.form.get("heen_en_terug"))
 
-            fouten = rit.validate()
-            if fouten:
-                for f in fouten:
-                    flash(f, "danger")
-                return render_template("rit_formulier.html", rit=rit,
-                                       default_driver=default_driver, default_vehicle=default_vehicle, today=today)
-
-            db.session.add(rit)
-            db.session.flush()
-
-            if request.form.get("heen_en_terug"):
-                rit2 = Trip(
-                    datum=rit.datum,
+            for datum_str in datums:
+                rit_heen = Trip(
+                    datum=datetime.strptime(datum_str, "%Y-%m-%d").date(),
                     driver_id=rit.driver_id,
                     vehicle_id=rit.vehicle_id,
-                    startlocatie=rit.eindlocatie,
-                    eindlocatie=rit.startlocatie,
-                    beginstand_km=rit.eindstand_km,
-                    eindstand_km=rit.eindstand_km + km,
+                    startlocatie=rit.startlocatie,
+                    eindlocatie=rit.eindlocatie,
+                    beginstand_km=lopende_stand,
+                    eindstand_km=lopende_stand + km,
                     type="zakelijk",
                     odoo_partner_id=rit.odoo_partner_id,
                     odoo_partner_naam=rit.odoo_partner_naam,
@@ -216,7 +214,46 @@ def rit_formulier(rit_id=None):
                     omschrijving=rit.omschrijving,
                     notitie=rit.notitie,
                 )
-                db.session.add(rit2)
+                fouten = rit_heen.validate()
+                if fouten:
+                    for f in fouten:
+                        flash(f, "danger")
+                    return render_template("rit_formulier.html", rit=rit,
+                                           default_driver=default_driver, default_vehicle=default_vehicle,
+                                           bestuurders=bestuurders, voertuigen=voertuigen, today=today)
+                db.session.add(rit_heen)
+                lopende_stand = rit_heen.eindstand_km
+
+                if heen_en_terug:
+                    rit_terug = Trip(
+                        datum=rit_heen.datum,
+                        driver_id=rit.driver_id,
+                        vehicle_id=rit.vehicle_id,
+                        startlocatie=rit.eindlocatie,
+                        eindlocatie=rit.startlocatie,
+                        beginstand_km=lopende_stand,
+                        eindstand_km=lopende_stand + km,
+                        type="zakelijk",
+                        odoo_partner_id=rit.odoo_partner_id,
+                        odoo_partner_naam=rit.odoo_partner_naam,
+                        odoo_project_id=None,
+                        odoo_project_naam=None,
+                        omschrijving=rit.omschrijving,
+                        notitie=rit.notitie,
+                    )
+                    db.session.add(rit_terug)
+                    lopende_stand = rit_terug.eindstand_km
+
+            db.session.commit()
+            n_dagen = len(datums)
+            n_ritten = n_dagen * (2 if heen_en_terug else 1)
+            flash(
+                f"{n_ritten} rit{'ten' if n_ritten > 1 else ''} opgeslagen"
+                f" ({n_dagen} dag{'en' if n_dagen > 1 else ''}"
+                f"{', incl. retourritten' if heen_en_terug else ''}).",
+                "success",
+            )
+            return redirect(url_for("ritten_lijst"))
         else:
             rit.eindstand_km = rit.beginstand_km + km
             fouten = rit.validate()
@@ -224,14 +261,16 @@ def rit_formulier(rit_id=None):
                 for f in fouten:
                     flash(f, "danger")
                 return render_template("rit_formulier.html", rit=rit,
-                                       default_driver=default_driver, default_vehicle=default_vehicle, today=today)
+                                       default_driver=default_driver, default_vehicle=default_vehicle,
+                                       bestuurders=bestuurders, voertuigen=voertuigen, today=today)
 
         db.session.commit()
         flash("Rit opgeslagen.", "success")
         return redirect(url_for("ritten_lijst"))
 
     return render_template("rit_formulier.html", rit=rit,
-                           default_driver=default_driver, default_vehicle=default_vehicle, today=today)
+                           default_driver=default_driver, default_vehicle=default_vehicle,
+                           bestuurders=bestuurders, voertuigen=voertuigen, today=today)
 
 
 # ── Rit verwijderen ────────────────────────────────────────────────────────

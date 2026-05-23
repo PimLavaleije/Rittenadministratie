@@ -15,19 +15,47 @@
           <!-- Datum -->
           <div class="mb-3">
             <label class="form-label fw-semibold">Datum <span class="text-danger">*</span></label>
+            {% if rit.id %}
             <input type="date" name="datum" class="form-control"
                    value="{{ rit.datum.strftime('%Y-%m-%d') if rit.datum else today }}" required>
+            {% else %}
+            <div id="datum_container">
+              <div class="input-group mb-2">
+                <input type="date" name="datum" class="form-control" value="{{ today }}" required>
+                <button type="button" class="btn btn-outline-secondary btn-datum-verwijder d-none" tabindex="-1">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+              </div>
+            </div>
+            <button type="button" id="datum_toevoegen" class="btn btn-sm btn-outline-secondary mt-1">
+              <i class="bi bi-plus me-1"></i>Dag toevoegen
+            </button>
+            {% endif %}
           </div>
 
-          <!-- Bestuurder + Voertuig (readonly) -->
+          <!-- Bestuurder + Voertuig -->
           <div class="row g-3 mb-3">
             <div class="col-6">
-              <label class="form-label fw-semibold text-muted small">Bestuurder</label>
-              <div class="form-control bg-light text-muted">{{ default_driver.naam if default_driver else '—' }}</div>
+              <label class="form-label fw-semibold">Bestuurder</label>
+              <select name="driver_id" class="form-select">
+                {% for d in bestuurders %}
+                <option value="{{ d.id }}"
+                  {% if (rit.driver_id and rit.driver_id == d.id) or (not rit.driver_id and default_driver and default_driver.id == d.id) %}selected{% endif %}>
+                  {{ d.naam }}
+                </option>
+                {% endfor %}
+              </select>
             </div>
             <div class="col-6">
-              <label class="form-label fw-semibold text-muted small">Voertuig</label>
-              <div class="form-control bg-light text-muted">{{ default_vehicle.kenteken if default_vehicle else '—' }}</div>
+              <label class="form-label fw-semibold">Voertuig</label>
+              <select name="vehicle_id" class="form-select">
+                {% for v in voertuigen %}
+                <option value="{{ v.id }}"
+                  {% if (rit.vehicle_id and rit.vehicle_id == v.id) or (not rit.vehicle_id and default_vehicle and default_vehicle.id == v.id) %}selected{% endif %}>
+                  {{ v.kenteken }}
+                </option>
+                {% endfor %}
+              </select>
             </div>
           </div>
 
@@ -82,9 +110,6 @@
                       placeholder="Optionele toelichting...">{{ rit.notitie or '' }}</textarea>
           </div>
 
-          <!-- Hidden fields -->
-          <input type="hidden" name="driver_id" value="{{ default_driver.id if default_driver else '' }}">
-          <input type="hidden" name="vehicle_id" value="{{ default_vehicle.id if default_vehicle else '' }}">
 
           <div class="d-flex justify-content-between">
             <a href="/ritten" class="btn btn-outline-secondary">Annuleren</a>
@@ -139,6 +164,37 @@
 
   document.addEventListener('click', e => {
     if (!input.contains(e.target) && !lijst.contains(e.target)) lijst.style.display = 'none';
+  });
+})();
+
+// Multi-datum
+(function () {
+  const container = document.getElementById('datum_container');
+  if (!container) return;
+
+  function updateVerwijderButtons() {
+    const btns = container.querySelectorAll('.btn-datum-verwijder');
+    btns.forEach(btn => btn.classList.toggle('d-none', btns.length === 1));
+  }
+
+  document.getElementById('datum_toevoegen').addEventListener('click', () => {
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = `<input type="date" name="datum" class="form-control" required>
+      <button type="button" class="btn btn-outline-danger btn-datum-verwijder" tabindex="-1">
+        <i class="bi bi-x-lg"></i>
+      </button>`;
+    container.appendChild(div);
+    div.querySelector('input').focus();
+    updateVerwijderButtons();
+  });
+
+  container.addEventListener('click', e => {
+    const btn = e.target.closest('.btn-datum-verwijder');
+    if (btn) {
+      btn.closest('.input-group').remove();
+      updateVerwijderButtons();
+    }
   });
 })();
 </script>
