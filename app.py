@@ -82,9 +82,10 @@ def dashboard():
     for rij in per_maand:
         maand_data[int(rij.maand) - 1] = float(rij.km or 0)
 
-    recente_ritten = (
-        Trip.query.order_by(Trip.datum.desc(), Trip.aangemaakt_op.desc()).limit(10).all()
-    )
+    recente_q = Trip.query.filter(extract("year", Trip.datum) == jaar)
+    if maand:
+        recente_q = recente_q.filter(extract("month", Trip.datum) == maand)
+    recente_ritten = recente_q.order_by(Trip.datum.desc(), Trip.aangemaakt_op.desc()).limit(10).all()
 
     jaren = [r[0] for r in db.session.query(extract("year", Trip.datum)).distinct().order_by(extract("year", Trip.datum).desc()).all()]
     if jaar not in jaren:
